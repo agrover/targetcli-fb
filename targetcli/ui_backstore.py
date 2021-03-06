@@ -301,13 +301,48 @@ class UIBackstore(UINode):
         except ValueError:
             raise ExecutionError("No storage object named %s." % name)
 
+        root_node = self.get_root()
+
         save = self.ui_eval_param(save, 'bool', False)
         if save:
-            rn = self.get_root()
-            rn._save_backups(default_save_file)
+            root_node._save_backups(default_save_file)
+
+        ui_nodes_to_refresh = set()
+        fabrics = {}
+        for lun in child.rtsnode.attached_luns:
+            fabric_name = lun.parent_tpg.parent_target.fabric_module.name
+            target_name = lun.parent_tpg.parent_target.wwn
+            try:
+                if fabric_name not in fabrics:
+                    fabrics[fabric_name] = root_node.get_child(fabric_name)
+
+                target_node = fabrics[fabric_name].get_child(target_name)
+
+                target_children = [child.name for child in target_node.children]
+                tpg_name = 'tpg' + str(lun.parent_tpg.tag)
+                if tpg_name in target_children:
+                    stale_node = target_node.get_child(tpg_name).get_child('luns')
+                elif 'luns' in target_children:
+                    stale_node = target_node.get_child('luns')
+                else:
+                    stale_node = target_node
+
+                ui_nodes_to_refresh.add(stale_node)
+            except ValueError as error:
+                self.shell.log.debug("Failed to retrieve cached configuration data for %s target %s LUN %d: %s"
+                                     % (fabric_name, target_name, lun.lun, error))
+                # If any errors occurred while looking up cached configuration data, refresh everything.
+                ui_nodes_to_refresh.clear()
+                ui_nodes_to_refresh.add(root_node)
+                break
 
         child.rtsnode.delete(save=save)
         self.remove_child(child)
+
+        for ui_node in ui_nodes_to_refresh:
+            # Refresh cached configuration data to prevent 'This LUN does not exist in configFS'
+            ui_node.refresh()
+
         self.shell.log.info("Deleted storage object %s." % name)
 
     def ui_complete_delete(self, parameters, text, current_param):
