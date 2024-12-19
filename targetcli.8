@@ -159,9 +159,10 @@ ports. These addr:port pairs are called
 Both IPv4 and IPv6 addresses are supported.
 .P
 When a target is created, targetcli automatically creates a default
-portal listening on all IPv4 addresses (shown as 0.0.0.0) on port 3260.
-If a different configuration is needed, the default portal can be
-removed and portals configured as desired.
+portal listening on all IPv4 and IPv6 addresses (shown as ::0) on port
+3260. If IPV6_V6ONLY is set, the default will only listen on all IPv6
+addresses. If a different configuration is needed, the default portal can
+be removed and portals configured as desired.
 .P
 If the hardware supports it,
 .B iSER
@@ -299,7 +300,7 @@ target.)
 .B portals/ create
 .br
 Add a portal, i.e. an IP address and TCP port via which the target can
-be contacted by initiators. Only required if the default 0.0.0.0:3260
+be contacted by initiators. Only required if the default [::0]:3260
 portal is not present.
 .P
 .B luns/ create /backstores/fileio/disk1

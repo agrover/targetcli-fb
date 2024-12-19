@@ -43,6 +43,7 @@ from .ui_node import UINode, UIRTSLibNode
 auth_params = ('userid', 'password', 'mutual_userid', 'mutual_password')
 int_params = ('enable',)
 discovery_params = auth_params + int_params
+default_portal_listen = "::0"
 
 class UIFabricModule(UIRTSLibNode):
     '''
@@ -340,10 +341,10 @@ class UIMultiTPGTarget(UIRTSLibNode):
 
         if tpg.has_feature("nps") and self.shell.prefs['auto_add_default_portal']:
             try:
-                NetworkPortal(tpg, "0.0.0.0")
+                NetworkPortal(tpg, f"[{default_portal_listen}]")
                 self.shell.log.info("Global pref auto_add_default_portal=true")
                 self.shell.log.info("Created default portal listening on all IPs"
-                                    " (0.0.0.0), port 3260.")
+                                    f" ({default_portal_listen}), port 3260.")
             except RTSLibError:
                 self.shell.log.info("Default portal not created, TPGs within a target cannot share ip:port.")
 
@@ -1280,9 +1281,9 @@ class UIPortals(UINode):
         Creates a Network Portal with the specified IP address and
         port.  If the port is omitted, the default port for
         the target fabric will be used. If the IP address is omitted,
-        INADDR_ANY (0.0.0.0) will be used.
+        IN6ADDR_ANY (::0) will be used.
 
-        Choosing IN6ADDR_ANY (::0) will listen on all IPv6 interfaces
+        The default IN6ADDR_ANY (::0) will listen on all IPv6 interfaces
         as well as IPv4, assuming IPV6_V6ONLY sockopt has not been
         set.
 
@@ -1298,12 +1299,12 @@ class UIPortals(UINode):
         # FIXME: Add a specfile parameter to determine default port
         default_port = 3260
         ip_port = self.ui_eval_param(ip_port, 'number', default_port)
-        ip_address = self.ui_eval_param(ip_address, 'string', "0.0.0.0")
+        ip_address = self.ui_eval_param(ip_address, 'string', default_portal_listen)
 
         if ip_port == default_port:
             self.shell.log.info("Using default IP port %d" % ip_port)
-        if ip_address == "0.0.0.0":
-            self.shell.log.info("Binding to INADDR_ANY (0.0.0.0)")
+        if ip_address == default_portal_listen:
+            self.shell.log.info(f"Binding to INADDR_ANY ({default_portal_listen})")
 
         portal = NetworkPortal(self.tpg, self._canonicalize_ip(ip_address),
                                ip_port, mode='create')
